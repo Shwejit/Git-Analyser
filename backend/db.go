@@ -26,5 +26,22 @@ CREATE TABLE IF NOT EXISTS commits (
 );`
 
 	_, err = DB.Exec(query)
-	return err
+	if err != nil {
+		return err
+	}
+
+	fileActivityQuery := `
+CREATE TABLE IF NOT EXISTS file_activity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_name TEXT UNIQUE,
+    commit_count INTEGER,
+    last_modified DATETIME
+);`
+
+	_, err = DB.Exec(fileActivityQuery)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

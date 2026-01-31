@@ -28,6 +28,8 @@ func main() {
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/commits", getCommitsHandler)
 	http.HandleFunc("/stats", getStatsHandler)
+	http.HandleFunc("/project/summary", getProjectSummary)
+
 
 	go func() {
 		println("🚀 API running on http://localhost:8080")
