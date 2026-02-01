@@ -21,6 +21,7 @@ func main() {
 
 	// 🔐 OAuth routes
 	http.HandleFunc("/auth/github", githubLogin)
+	http.HandleFunc("/auth/callback", githubCallback)
 	http.HandleFunc("/auth/callback/", githubCallback)
 
 	// Sync repo
