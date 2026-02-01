@@ -12,10 +12,15 @@ var githubClientSecret = os.Getenv("GITHUB_CLIENT_SECRET")
 
 // Step 1: Redirect to GitHub
 func githubLogin(w http.ResponseWriter, r *http.Request) {
+	// url := fmt.Sprintf(
+	// 	"https://github.com/login/oauth/authorize?client_id=%s&scope=repo",
+	// 	githubClientID,
+	// )
 	url := fmt.Sprintf(
-		"https://github.com/login/oauth/authorize?client_id=%s&scope=repo",
-		githubClientID,
-	)
+  "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=https://gitsense-ooly.onrender.com/auth/callback/&scope=repo",
+  githubClientID,
+)
+
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
