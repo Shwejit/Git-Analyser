@@ -66,7 +66,7 @@ document.getElementById("sync").addEventListener("click", () => {
 
   const [owner, repo] = repoValue.split("/");
 
-  fetch(`https://gitsense-ooly.onrender.com/sync??owner=${owner}&repo=${repo}`, {
+  fetch(`https://gitsense-ooly.onrender.com/sync?owner=${owner}&repo=${repo}`, {
     headers: {
       "Authorization": authToken
     }
