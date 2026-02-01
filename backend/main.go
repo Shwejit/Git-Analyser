@@ -3,48 +3,52 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"time"
+	"os"
 )
 
 func main() {
 
 	err := InitDB()
 	if err != nil {
-		fmt.Println("DB error:", err)
-		return
+		panic(err)
 	}
-	fmt.Println("Database ready")
 
-	repoPath := "D:/LeetCode"
-
-	err = SyncCommits(repoPath)
-	if err != nil {
-		fmt.Println("Sync error:", err)
-		return
-	}
-	fmt.Println("Initial sync done")
-
-	// Start API server
+	// Health check
 	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/commits", getCommitsHandler)
-	http.HandleFunc("/stats", getStatsHandler)
+
+	// Project data
 	http.HandleFunc("/project/summary", getProjectSummary)
 
+	// 🔐 OAuth routes
+	http.HandleFunc("/auth/github", githubLogin)
+	http.HandleFunc("/auth/callback", githubCallback)
 
-	go func() {
-		println("🚀 API running on http://localhost:8080")
-		http.ListenAndServe(":8080", nil)
-	}()
+	// Sync repo
+	http.HandleFunc("/sync", syncHandler)
 
-	for {
-		time.Sleep(30 * time.Second)
+	// Token bridge to extension
+	http.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("value")
+		fmt.Fprintf(w, `
+		<script>
+		window.opener.postMessage({ token: "%s" }, "*");
+		window.close();
+		</script>
+		`, token)
+	})
 
-		fmt.Println("Syncing Git changes...", time.Now())
-		err := SyncCommits(repoPath)
-		if err != nil {
-			fmt.Println("Sync error:", err)
-		} else {
-			fmt.Println("Sync complete")
-		}
+	http.HandleFunc("/repos", getUserRepos)
+	http.HandleFunc("/history", getRepoHistory)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	fmt.Println("🚀 Backend running on port", port)
+
+	err = http.ListenAndServe(":"+port, nil)
+	if err != nil {
+		panic(err)
 	}
 }

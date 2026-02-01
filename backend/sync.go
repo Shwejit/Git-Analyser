@@ -1,94 +1,103 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"os/exec"
-	"strconv"
-	"strings"
+	"net/http"
 )
 
-func gitPull(repoPath string) error {
-	cmd := exec.Command("git", "pull")
-	cmd.Dir = repoPath
-	return cmd.Run()
+func syncHandler(w http.ResponseWriter, r *http.Request) {
+	owner := r.URL.Query().Get("owner")
+	repo := r.URL.Query().Get("repo")
+	token := r.Header.Get("Authorization")
+
+	if owner == "" || repo == "" || token == "" {
+		http.Error(w, "Missing owner / repo / token", http.StatusBadRequest)
+		return
+	}
+
+	err := SyncFromGitHub(owner, repo, token)
+	if err != nil {
+		http.Error(w, "Sync failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Save repo under user
+	DB.Exec(`
+		INSERT INTO user_repos (user_id, repo_name, last_synced)
+		SELECT id, ?, CURRENT_TIMESTAMP
+		FROM users
+		WHERE access_token = ?
+		`, repo, token)
+
+	saveSnapshot(repo)
+
+	if shouldNotify(repo) {
+		w.Write([]byte("🔔 Significant activity detected"))
+		return
+	}
+
+	w.Write([]byte("Synced successfully"))
+
+}
+func saveSnapshot(repo string) {
+	row := DB.QueryRow(`
+		SELECT 
+			SUM(CASE WHEN julianday('now') - julianday(last_modified) <= 7 THEN 1 ELSE 0 END),
+			SUM(CASE WHEN julianday('now') - julianday(last_modified) BETWEEN 7 AND 30 THEN 1 ELSE 0 END),
+			SUM(CASE WHEN julianday('now') - julianday(last_modified) > 30 THEN 1 ELSE 0 END)
+		FROM file_activity
+	`)
+
+	var active, stable, inactive int
+	row.Scan(&active, &stable, &inactive)
+
+	total := active + stable + inactive
+	score := 0.0
+	if total > 0 {
+		score = (float64(active) / float64(total)) * 100
+	}
+
+	DB.Exec(`
+		INSERT INTO repo_snapshots
+		(repo_name, active_files, stable_files, inactive_files, activity_score)
+		VALUES (?, ?, ?, ?, ?)
+	`, repo, active, stable, inactive, score)
+
 }
 
-func SyncCommits(repoPath string) error {
+func shouldNotify(repo string) bool {
+	row := DB.QueryRow(`
+		SELECT activity_score
+		FROM repo_snapshots
+		WHERE repo_name = ?
+		ORDER BY created_at DESC
+		LIMIT 2
+	`, repo)
 
-	err := gitPull(repoPath)
+	var latest, previous float64
+
+	err := row.Scan(&latest)
 	if err != nil {
-		fmt.Println("Git pull failed:", err)
-	} else {
-		fmt.Println("Git repository updated")
+		return false
 	}
 
-	cmd := exec.Command("git", "log", "--pretty=format:%H|%ct|%s")
-	cmd.Dir = repoPath
+	row = DB.QueryRow(`
+		SELECT activity_score
+		FROM repo_snapshots
+		WHERE repo_name = ?
+		ORDER BY created_at DESC
+		LIMIT 1 OFFSET 1
+	`, repo)
 
-	out, err := cmd.Output()
+	err = row.Scan(&previous)
 	if err != nil {
-		return err
+		return false
 	}
 
-	scanner := bufio.NewScanner(strings.NewReader(string(out)))
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.SplitN(line, "|", 3)
-
-		if len(parts) == 3 {
-			hash := parts[0]
-			unixTime := parts[1]
-			message := parts[2]
-
-			DB.Exec(
-				`INSERT OR IGNORE INTO commits
-	(hash, message, commit_time)
-	VALUES (?, ?, datetime(?, 'unixepoch'))`,
-				hash, message, unixTime,
-			)
-
-		}
+	// Notify only if change > 10%
+	diff := latest - previous
+	if diff < 0 {
+		diff = -diff
 	}
 
-	cmd = exec.Command(
-		"git",
-		"log",
-		"--name-only",
-		"--pretty=format:%ct",
-	)
-	cmd.Dir = repoPath
-
-	out, _ = cmd.Output()
-	scanner = bufio.NewScanner(strings.NewReader(string(out)))
-
-	var currentTime string
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		if line == "" {
-			continue
-		}
-
-		// If line is timestamp
-		if _, err := strconv.ParseInt(line, 10, 64); err == nil {
-			currentTime = line
-			continue
-		}
-
-		// Otherwise it's a filename
-		DB.Exec(`
-        INSERT INTO file_activity
-        (file_name, commit_count, last_modified)
-        VALUES (?, 1, datetime(?, 'unixepoch'))
-        ON CONFLICT(file_name)
-        DO UPDATE SET
-            commit_count = commit_count + 1,
-            last_modified = datetime(?, 'unixepoch')
-    `, line, currentTime, currentTime)
-	}
-
-	return nil
+	return diff >= 10
 }
