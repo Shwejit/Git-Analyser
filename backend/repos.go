@@ -13,7 +13,6 @@ type Repo struct {
 	} `json:"owner"`
 }
 
-// 🔹 KEEP TOKEN HELPER HERE (only here!)
 func extractToken(r *http.Request) string {
 	token := r.Header.Get("Authorization")
 	token = strings.Replace(token, "Bearer ", "", 1)
@@ -33,7 +32,8 @@ func getUserRepos(w http.ResponseWriter, r *http.Request) {
 		nil,
 	)
 
-	req.Header.Set("Authorization", "Bearer "+token)
+	// 🔴 THIS IS THE IMPORTANT CHANGE
+	req.Header.Set("Authorization", "token "+token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
