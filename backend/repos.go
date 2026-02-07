@@ -15,6 +15,12 @@ type Repo struct {
 
 func extractToken(r *http.Request) string {
 	token := r.Header.Get("Authorization")
+
+	// Chrome extension sends lowercase header sometimes
+	if token == "" {
+		token = r.Header.Get("authorization")
+	}
+
 	token = strings.Replace(token, "Bearer ", "", 1)
 	return token
 }
