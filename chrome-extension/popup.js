@@ -1,138 +1,89 @@
+// ===============================
+const BASE_URL = "https://git-analyser-nu1i.onrender.com";
 let authToken = "";
 
-// ----------------------------
-// LOGIN WITH GITHUB
-// ----------------------------
-document.getElementById("login").addEventListener("click", () => {
-  chrome.tabs.create({
-    url: "https://gitsense-ooly.onrender.com/auth/github"
-  });
-});
-
-// ----------------------------
-// RECEIVE TOKEN FROM BACKEND
-// ----------------------------
-window.addEventListener("message", (event) => {
-  if (event.data.token) {
-    authToken = event.data.token;
-
-    document.getElementById("status").innerText =
-      "✅ Logged in successfully";
-
+// Load saved token
+chrome.storage.local.get(["token"], (data) => {
+  if (data.token) {
+    authToken = data.token;
+    document.getElementById("status").innerText = "✅ Token loaded";
     loadRepositories();
   }
 });
 
-// ----------------------------
-// LOAD USER REPOSITORIES
-// ----------------------------
+// Save token
+document.getElementById("saveToken").addEventListener("click", () => {
+  const token = document.getElementById("tokenInput").value.trim();
+  if (!token) return alert("Paste token");
+
+  authToken = token;
+  chrome.storage.local.set({ token });
+  document.getElementById("status").innerText = "✅ Token saved";
+
+  loadRepositories();
+});
+
+// Load repos
 function loadRepositories() {
-  fetch("https://gitsense-ooly.onrender.com/repos", {
-    headers: {
-      "Authorization": authToken
-    }
+  fetch(`${BASE_URL}/repos`, {
+    headers: { Authorization: authToken }
   })
-    .then(res => res.json())
-    .then(repos => {
-      const select = document.getElementById("repoSelect");
-      select.innerHTML = "";
+  .then(res => res.json())
+  .then(repos => {
+    const select = document.getElementById("repoSelect");
+    select.innerHTML = "";
 
-      repos.forEach(repo => {
-        const option = document.createElement("option");
-        option.value = `${repo.owner.login}/${repo.name}`;
-        option.textContent = `${repo.owner.login}/${repo.name}`;
-        select.appendChild(option);
-      });
-
-      document.getElementById("status").innerText =
-        "✅ Repositories loaded";
-    })
-    .catch(() => {
-      document.getElementById("status").innerText =
-        "❌ Failed to load repositories";
+    repos.forEach(repo => {
+      const option = document.createElement("option");
+      option.value = `${repo.owner.login}/${repo.name}`;
+      option.textContent = `${repo.owner.login}/${repo.name}`;
+      select.appendChild(option);
     });
+
+    document.getElementById("status").innerText = "✅ Repositories loaded";
+  })
+  .catch(() => {
+    document.getElementById("status").innerText = "❌ Failed to load repositories";
+  });
 }
 
-// ----------------------------
-// SYNC REPO + SAVE SNAPSHOT
-// ----------------------------
+// Sync repo
 document.getElementById("sync").addEventListener("click", () => {
   const repoValue = document.getElementById("repoSelect").value;
-
-  if (!repoValue) {
-    alert("Please select a repository");
-    return;
-  }
+  if (!repoValue) return alert("Select repo");
 
   const [owner, repo] = repoValue.split("/");
 
-  fetch(`https://gitsense-ooly.onrender.com/sync?owner=${owner}&repo=${repo}`, {
-    headers: {
-      "Authorization": authToken
-    }
+  fetch(`${BASE_URL}/sync?owner=${owner}&repo=${repo}`, {
+    headers: { Authorization: authToken }
   })
-    .then(res => res.text())
-    .then(msg => {
-  document.getElementById("status").innerText = msg;
-
-  if (msg.includes("🔔")) {
-    chrome.notifications.create({
-      type: "basic",
-      iconUrl: "icon.png",
-      title: "GitSense Alert",
-      message: "Significant repo activity detected!"
-    });
-  }
-
-  loadHistory(repoValue);
-})
-
-    .catch(() => {
-      document.getElementById("status").innerText =
-        "❌ Sync failed";
-    });
+  .then(res => res.text())
+  .then(msg => {
+    document.getElementById("status").innerText = msg;
+    loadHistory(repoValue);
+  });
 });
 
-// ----------------------------
-// LOAD REPO HISTORY (GRAPH)
-// ----------------------------
+// Load graph
 function loadHistory(repo) {
-  fetch(`https://gitsense-ooly.onrender.com/history?repo=${repo}`)
-    .then(res => res.json())
-    .then(data => {
-      const ctx = document.getElementById("chart").getContext("2d");
+  fetch(`${BASE_URL}/history?repo=${repo}`)
+  .then(res => res.json())
+  .then(data => {
+    const ctx = document.getElementById("chart").getContext("2d");
+    const labels = data.map(d => d.time);
+    const scores = data.map(d => d.score);
 
-      const labels = data.map(d => d.time);
-      const scores = data.map(d => d.score);
-
-      new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: "Repo Activity",
-              data: scores,
-              borderColor: "blue",
-              backgroundColor: "rgba(0,0,255,0.1)",
-              fill: true,
-              tension: 0.3
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: {
-              min: 0,
-              max: 100
-            }
-          }
-        }
-      });
-    })
-    .catch(() => {
-      document.getElementById("status").innerText =
-        "❌ Failed to load history";
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Repo Activity",
+          data: scores,
+          borderColor: "blue",
+          fill: true
+        }]
+      }
     });
+  });
 }
