@@ -11,24 +11,23 @@ var githubClientID = os.Getenv("GITHUB_CLIENT_ID")
 var githubClientSecret = os.Getenv("GITHUB_CLIENT_SECRET")
 
 // Step 1: Redirect to GitHub
-//
-//	func githubLogin(w http.ResponseWriter, r *http.Request) {
-//		url := fmt.Sprintf(
-//			"https://github.com/login/oauth/authorize?client_id=%s&scope=repo",
-//			githubClientID,
-//		)
-//		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-//	}
+// func githubLogin(w http.ResponseWriter, r *http.Request) {
+// 	url := fmt.Sprintf(
+// 		"https://github.com/login/oauth/authorize?client_id=%s&scope=repo",
+// 		githubClientID,
+// 	)
+// 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+// }
 func githubLogin(w http.ResponseWriter, r *http.Request) {
-	redirectURL := "https://gitsense-ooly.onrender.com/auth/callback"
+    redirectURL := "https://gitsense-ooly.onrender.com/auth/callback"
 
-	url := fmt.Sprintf(
-		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=repo user:email",
-		githubClientID,
-		redirectURL,
-	)
+    url := fmt.Sprintf(
+        "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=repo user:email",
+        githubClientID,
+        redirectURL,
+    )
 
-	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+    http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
 // Step 2: Callback from GitHub
