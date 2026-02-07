@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 type Repo struct {
@@ -12,8 +13,15 @@ type Repo struct {
 	} `json:"owner"`
 }
 
-func getUserRepos(w http.ResponseWriter, r *http.Request) {
+// 🔹 KEEP TOKEN HELPER HERE (only here!)
+func extractToken(r *http.Request) string {
 	token := r.Header.Get("Authorization")
+	token = strings.Replace(token, "Bearer ", "", 1)
+	return token
+}
+
+func getUserRepos(w http.ResponseWriter, r *http.Request) {
+	token := extractToken(r)
 	if token == "" {
 		http.Error(w, "Unauthorized", 401)
 		return
@@ -25,7 +33,6 @@ func getUserRepos(w http.ResponseWriter, r *http.Request) {
 		nil,
 	)
 
-	// ✅ GitHub requires Bearer token
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := http.DefaultClient.Do(req)
