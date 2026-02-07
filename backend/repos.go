@@ -15,18 +15,12 @@ type Repo struct {
 
 func extractToken(r *http.Request) string {
 	token := r.Header.Get("Authorization")
-
-	// Chrome extension sends lowercase header sometimes
-	if token == "" {
-		token = r.Header.Get("authorization")
-	}
-
-	token = strings.Replace(token, "Bearer ", "", 1)
-	return token
+	return strings.TrimPrefix(token, "Bearer ")
 }
 
 func getUserRepos(w http.ResponseWriter, r *http.Request) {
 	token := extractToken(r)
+
 	if token == "" {
 		http.Error(w, "Unauthorized", 401)
 		return
@@ -38,10 +32,7 @@ func getUserRepos(w http.ResponseWriter, r *http.Request) {
 		nil,
 	)
 
-	// ✅ REQUIRED HEADERS
-	req.Header.Set("Authorization", "token "+token)
-	req.Header.Set("User-Agent", "GitSense-App")
-	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
