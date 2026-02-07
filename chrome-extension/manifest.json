@@ -4,23 +4,20 @@
   "version": "1.0",
   "description": "Track GitHub repo activity",
 
-"permissions": [
-  "storage",
-  "identity",
-  "tabs",
-  "notifications"
-],
-
-  "host_permissions": [
-    "https://gitsense-ooly.onrender.com/*",
-    "https://github.com/*"
+  "permissions": [
+    "storage",
+    "notifications"
   ],
 
-  "action": {
-    "default_popup": "popup.html"
-  },
+  "host_permissions": [
+    "https://git-analyser-nu1i.onrender.com/*"
+  ],
 
   "background": {
     "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html"
   }
 }
