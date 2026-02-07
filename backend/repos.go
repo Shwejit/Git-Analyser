@@ -32,8 +32,10 @@ func getUserRepos(w http.ResponseWriter, r *http.Request) {
 		nil,
 	)
 
-	// 🔴 THIS IS THE IMPORTANT CHANGE
+	// ✅ REQUIRED HEADERS
 	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("User-Agent", "GitSense-App")
+	req.Header.Set("Accept", "application/vnd.github+json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

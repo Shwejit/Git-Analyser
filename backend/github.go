@@ -24,6 +24,8 @@ func SyncFromGitHub(owner, repo, token string) error {
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("User-Agent", "GitSense-App")
+	req.Header.Set("Accept", "application/vnd.github+json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -42,6 +44,8 @@ func SyncFromGitHub(owner, repo, token string) error {
 
 		req, _ := http.NewRequest("GET", fileURL, nil)
 		req.Header.Set("Authorization", "token "+token)
+		req.Header.Set("User-Agent", "GitSense-App")
+		req.Header.Set("Accept", "application/vnd.github+json")
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -78,6 +82,8 @@ func getGitHubUsername(token string) string {
 		nil,
 	)
 	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("User-Agent", "GitSense-App")
+	req.Header.Set("Accept", "application/vnd.github+json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
