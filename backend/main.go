@@ -13,11 +13,26 @@ func main() {
 		panic(err)
 	}
 
-	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/project/summary", getProjectSummary)
-	http.HandleFunc("/sync", syncHandler)
-	http.HandleFunc("/repos", getUserRepos)
-	http.HandleFunc("/history", getRepoHistory)
+	mux := http.NewServeMux()
+
+	// Routes
+	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/project/summary", getProjectSummary)
+	mux.HandleFunc("/auth/github", githubLogin)
+	mux.HandleFunc("/auth/callback", githubCallback)
+	mux.HandleFunc("/sync", syncHandler)
+	mux.HandleFunc("/repos", getUserRepos)
+	mux.HandleFunc("/history", getRepoHistory)
+
+	mux.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("value")
+		fmt.Fprintf(w, `
+		<script>
+		window.opener.postMessage({ token: "%s" }, "*");
+		window.close();
+		</script>
+		`, token)
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -26,10 +41,8 @@ func main() {
 
 	fmt.Println("🚀 Backend running on port", port)
 
-	// ✅ Enable CORS wrapper
-	handler := enableCORS(http.DefaultServeMux)
-
-	err = http.ListenAndServe(":"+port, handler)
+	// 👇 WRAP SERVER WITH CORS
+	err = http.ListenAndServe(":"+port, enableCORS(mux))
 	if err != nil {
 		panic(err)
 	}
