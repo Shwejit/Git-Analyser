@@ -13,6 +13,7 @@ func main() {
 		panic(err)
 	}
 
+	// 🔥 CREATE OUR OWN ROUTER (NO DEFAULT MUX)
 	mux := http.NewServeMux()
 
 	// Routes
@@ -41,8 +42,10 @@ func main() {
 
 	fmt.Println("🚀 Backend running on port", port)
 
-	// 👇 WRAP SERVER WITH CORS
-	err = http.ListenAndServe(":"+port, enableCORS(mux))
+	// 🔥 THIS LINE IS THE REAL FIX
+	handler := enableCORS(mux)
+
+	err = http.ListenAndServe(":"+port, handler)
 	if err != nil {
 		panic(err)
 	}
