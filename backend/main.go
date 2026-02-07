@@ -13,10 +13,9 @@ func main() {
 		panic(err)
 	}
 
-	// 🔥 CREATE OUR OWN ROUTER (NO DEFAULT MUX)
 	mux := http.NewServeMux()
 
-	// Routes
+	// API routes
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/project/summary", getProjectSummary)
 	mux.HandleFunc("/auth/github", githubLogin)
@@ -35,18 +34,29 @@ func main() {
 		`, token)
 	})
 
+	// 🔥 GLOBAL HANDLER (THIS FIXES CORS 100%)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// Allow Chrome extension to talk to backend
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+		// 🔥 Handle ALL preflight requests HERE
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Pass real requests to router
+		mux.ServeHTTP(w, r)
+	})
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
 	fmt.Println("🚀 Backend running on port", port)
-
-	// 🔥 THIS LINE IS THE REAL FIX
-	handler := enableCORS(mux)
-
-	err = http.ListenAndServe(":"+port, handler)
-	if err != nil {
-		panic(err)
-	}
+	panic(http.ListenAndServe(":"+port, handler))
 }
