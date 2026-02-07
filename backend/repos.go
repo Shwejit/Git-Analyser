@@ -25,7 +25,8 @@ func getUserRepos(w http.ResponseWriter, r *http.Request) {
 		nil,
 	)
 
-	req.Header.Set("Authorization", token)
+	// req.Header.Set("Authorization", token)
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
