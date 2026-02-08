@@ -92,3 +92,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
 });
+
+// Auto sync every 3 minutes
+setInterval(() => {
+  chrome.storage.local.get(["github_token", "selected_repo"], async (data) => {
+    if (!data.github_token || !data.selected_repo) return;
+
+    const [owner, repo] = data.selected_repo.split("/");
+
+    const res = await fetch(
+      `https://git-analyser-nu1i.onrender.com/sync?owner=${owner}&repo=${repo}`,
+      { headers: { Authorization: data.github_token } }
+    );
+
+    const msg = await res.text();
+
+    // If new activity detected → show notification
+    if (msg.includes("Significant")) {
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: "icon.png",
+        title: "GitSense Alert 🚀",
+        message: "New commit detected in " + repo
+      });
+    }
+  });
+}, 180000);
+
